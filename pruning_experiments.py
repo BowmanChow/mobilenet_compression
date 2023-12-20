@@ -4,7 +4,7 @@
 import os
 import argparse
 import copy
-from time import gmtime, strftime
+from time import gmtime, strftime, perf_counter
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -97,7 +97,7 @@ def run_finetune(model, train_dataloader, valid_dataloader, device,
             optimizer.step()
             
         # validation
-        valid_loss, valid_acc = run_eval(model, valid_dataloader, device)
+        valid_loss, valid_acc, *_ = run_eval(model, valid_dataloader, device)
         train_loss = np.array(loss_list).mean()
         print('Epoch {}: train loss {:.4f}, valid loss {:.4f}, valid acc {:.4f}'.format
               (epoch, train_loss, valid_loss, valid_acc))
@@ -147,7 +147,7 @@ def run_finetune_distillation(student_model, teacher_model, train_dataloader, va
             optimizer.step()
 
         # validation
-        valid_loss, valid_acc = run_eval(student_model, valid_dataloader, device)
+        valid_loss, valid_acc, *_ = run_eval(student_model, valid_dataloader, device)
         train_loss = np.array(loss_list).mean()
         print('Epoch {}: train loss {:.4f}, valid loss {:.4f}, valid acc {:.4f}'.format
               (epoch, train_loss, valid_loss, valid_acc))
