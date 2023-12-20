@@ -11,6 +11,7 @@ import torch.nn.functional as F
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 import numpy as np
+from pathlib import Path
 
 import nni
 from nni.compression.pytorch import ModelSpeedup
@@ -207,6 +208,12 @@ def parse_args():
 
     parser.add_argument('--experiment_dir', type=str, required=True,
                         help='directory containing the pretrained model')
+    parser.add_argument('--input_dir', type=str, default='./pretrained_mobilenet_v2_torchhub',
+                        help='directory containing the input model')
+    parser.add_argument('--output_dir', type=str, default='./pretrained_mobilenet_v2_torchhub',
+                        help='directory to output')
+    parser.add_argument('--dataset_dir', type=str, default='./data/stanford-dogs',
+                        help='directory of dataset')
     parser.add_argument('--checkpoint_name', type=str, default='checkpoint_best.pt',
                          help='checkpoint of the pretrained model')
     
@@ -258,27 +265,31 @@ def run_pruning(args):
     torch.set_num_threads(args.n_workers)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    log = open(args.experiment_dir + '/pruning_{}_{}_sparsity{}_{}.log'.format(
+    log = open(args.output_dir + '/pruning_{}_{}_sparsity{}_{}.log'.format(
         args.pruner_name, args.pruning_mode, args.sparsity,
         strftime("%Y%m%d%H%M", gmtime())), 'w')
     def print_log(text: str):
         print(text)
         log.write(text)
     
-    train_dataset = TrainDataset('./data/stanford-dogs/Processed/train')
+    dataset_path = Path(args.dataset_dir) / "Processed"
+    print_log(f"Building Dataset in {dataset_path}")
+    train_dataset = TrainDataset(str(dataset_path / 'train'))
     train_dataloader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
-    train_dataset_for_pruner = EvalDataset('./data/stanford-dogs/Processed/train')
+    train_dataset_for_pruner = EvalDataset(str(dataset_path / 'train'))
     train_dataloader_for_pruner = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=False)
-    valid_dataset = EvalDataset('./data/stanford-dogs/Processed/valid')
+    valid_dataset = EvalDataset(str(dataset_path / 'valid'))
     valid_dataloader = DataLoader(valid_dataset, batch_size=args.batch_size, shuffle=False)
-    test_dataset = EvalDataset('./data/stanford-dogs/Processed/test')
+    test_dataset = EvalDataset(str(dataset_path / 'test'))
     test_dataloader = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False)
 
+    input_model_path = os.path.join(args.input_dir, args.checkpoint_name)
     model = create_model(model_type=model_type, pretrained=False, n_classes=n_classes,
-                         input_size=input_size, checkpoint=args.experiment_dir + '/' + args.checkpoint_name)
+                         input_size=input_size, checkpoint=input_model_path)
+    print_log(f"Load model from {input_model_path}")
     model = model.to(device)
-    original_model_size = os.path.getsize(args.experiment_dir + '/' + args.checkpoint_name) / (1024 * 1024)  # 将字节转换为MB
-    print_log(f"\n剪枝之前模型的存储占用大小: {original_model_size:.2f} MB\n")
+    original_model_size = os.path.getsize(input_model_path) / (1024 * 1024)  # 将字节转换为MB
+    print_log(f"\n剪枝之前模型 {input_model_path} 的存储占用大小: {original_model_size:.2f} MB\n")
 
     teacher_model = None
     if args.kd:
@@ -348,10 +359,12 @@ def run_pruning(args):
             kwargs['sparsifying_training_epochs'] = 10
 
     # pruning
+    model_temp_path = os.path.join(args.output_dir, 'model_temp.pth')
+    mask_temp_path = os.path.join(args.output_dir, 'mask_temp.pth')
     pruner = pruner_type_to_class[args.pruner_name](model, config_list, **kwargs)
     pruner.compress()
-    pruner.export_model(args.experiment_dir + '/model_temp.pth', args.experiment_dir + './mask_temp.pth')
-    
+    pruner.export_model(model_temp_path, mask_temp_path)
+
     # model speedup
     pruner._unwrap_model()
     if args.speed_up:
@@ -382,13 +395,14 @@ def run_pruning(args):
     print_log(f"After Pruning:\nLoss: {final_loss}\nAccuracy: {final_acc}\n")
 
     # 在剪枝之后
-    torch.save(model, 'temp_pruned_model.pth') 
-    pruned_model_size = os.path.getsize('temp_pruned_model.pth') / (1024 * 1024)  # 将字节转换为MB
+    pruned_model_path = os.path.join(args.output_dir, 'temp_pruned_model.pth')
+    torch.save(model, pruned_model_path) 
+    pruned_model_size = os.path.getsize(pruned_model_path) / (1024 * 1024)  # 将字节转换为MB
     # os.remove('temp_pruned_model.pth')
-    print_log(f"剪枝之后模型的存储占用大小: {pruned_model_size:.2f} MB\n")
+    print_log(f"剪枝之后模型 {pruned_model_path} 的存储占用大小: {pruned_model_size:.2f} MB\n")
 
     # clean up
-    filePaths = [args.experiment_dir + '/model_tmp.pth', args.experiment_dir + '/mask_tmp.pth']
+    filePaths = [model_temp_path, mask_temp_path]
     for f in filePaths:
         if os.path.exists(f):
             os.remove(f)
