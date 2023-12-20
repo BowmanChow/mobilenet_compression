@@ -50,9 +50,11 @@ pruner_type_to_class = {'level': LevelPruner,
 
 def run_eval(model, dataloader, device):
     model.eval()
+    total_images = 0
     loss_func = nn.CrossEntropyLoss()
     acc_list, loss_list = [], []
     with torch.no_grad():
+        start_time_raw = perf_counter()
         for i, (inputs, labels) in enumerate(tqdm(dataloader)):
             inputs, labels = inputs.float().to(device), labels.to(device)
             preds= model(inputs)
@@ -61,11 +63,15 @@ def run_eval(model, dataloader, device):
             acc_list.append(acc)
             loss = loss_func(preds, labels).item()
             loss_list.append(loss)
+            total_images += inputs.size(0)  # 计算总图片数
+        end_time_raw = perf_counter()
 
+    total_time = end_time_raw - start_time_raw
+    perimg_time = total_time / total_images *1000
     final_loss = np.array(loss_list).mean()
     final_acc = np.array(acc_list).mean()
 
-    return final_loss, final_acc
+    return final_loss, final_acc, total_time, perimg_time
 
 
 def run_finetune(model, train_dataloader, valid_dataloader, device,
