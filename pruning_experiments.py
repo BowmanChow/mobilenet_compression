@@ -28,6 +28,9 @@ from nni.algorithms.compression.pytorch.pruning import (
 import logging
 from nni.compression.pytorch.speedup import compressor
 compressor._logger.setLevel(logging.WARNING)
+from nni.compression.pytorch.speedup import compress_modules
+compress_modules._logger.setLevel(logging.WARNING)
+
 
 from utils import *
 
