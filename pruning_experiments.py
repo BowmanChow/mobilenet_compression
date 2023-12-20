@@ -25,6 +25,9 @@ from nni.algorithms.compression.pytorch.pruning import (
     ActivationMeanRankFilterPruner,
     ActivationAPoZRankFilterPruner
 )
+import logging
+from nni.compression.pytorch.speedup import compressor
+compressor._logger.setLevel(logging.WARNING)
 
 from utils import *
 
