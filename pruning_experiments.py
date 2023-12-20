@@ -252,6 +252,9 @@ def run_pruning(args):
     log = open(args.experiment_dir + '/pruning_{}_{}_sparsity{}_{}.log'.format(
         args.pruner_name, args.pruning_mode, args.sparsity,
         strftime("%Y%m%d%H%M", gmtime())), 'w')
+    def print_log(text: str):
+        print(text)
+        log.write(text)
     
     train_dataset = TrainDataset('./data/stanford-dogs/Processed/train')
     train_dataloader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
@@ -265,6 +268,8 @@ def run_pruning(args):
     model = create_model(model_type=model_type, pretrained=False, n_classes=n_classes,
                          input_size=input_size, checkpoint=args.experiment_dir + '/' + args.checkpoint_name)
     model = model.to(device)
+    original_model_size = os.path.getsize(args.experiment_dir + '/' + args.checkpoint_name) / (1024 * 1024)  # 将字节转换为MB
+    print_log(f"\n剪枝之前模型的存储占用大小: {original_model_size:.2f} MB\n")
 
     teacher_model = None
     if args.kd:
@@ -272,9 +277,10 @@ def run_pruning(args):
 
     # evaluation before pruning
     # count_flops(model, log, device)
-    initial_loss, initial_acc = run_eval(model, test_dataloader, device)
-    print('Before Pruning:\nLoss: {}\nAccuracy: {}'.format(initial_loss, initial_acc))
-    log.write('Before Pruning:\nLoss: {}\nAccuracy: {}\n'.format(initial_loss, initial_acc))
+    initial_loss, initial_acc, total_time_bef, perimg_time_bef = run_eval(model, test_dataloader, device)
+    print_log(f"\nInference elapsed raw time: {total_time_bef} s")
+    print_log(f"Average time per image: {perimg_time_bef} ms")
+    print_log(f"Before Pruning:\nLoss: {initial_loss}\nAccuracy: {initial_acc}\n")
 
     # set up config list and pruner
     config_list = []
@@ -346,9 +352,10 @@ def run_pruning(args):
         print(model)
         count_flops(model, log)
 
-    intermediate_loss, intermediate_acc = run_eval(model, test_dataloader, device)
-    print('Before Finetuning:\nLoss: {}\nAccuracy: {}'.format(intermediate_loss, intermediate_acc))
-    log.write('Before Finetuning:\nLoss: {}\nAccuracy: {}\n'.format(intermediate_loss, intermediate_acc))
+    intermediate_loss, intermediate_acc, total_time_befft, perimg_time_befft = run_eval(model, test_dataloader, device)
+    print_log(f"\nInference elapsed raw time: {total_time_befft} s")
+    print_log(f"Average time per image: {perimg_time_befft} ms")
+    print_log(f"Before Finetuning:\nLoss: {intermediate_loss}\nAccuracy: {intermediate_acc}\n")
 
     # finetuning
     if args.kd:
@@ -360,9 +367,16 @@ def run_pruning(args):
                              learning_rate=args.learning_rate, weight_decay=args.weight_decay)
         
     # final evaluation
-    final_loss, final_acc = run_eval(model, test_dataloader, device)
-    print('After Pruning:\nLoss: {}\nAccuracy: {}'.format(final_loss, final_acc))
-    log.write('After Pruning:\nLoss: {}\nAccuracy: {}'.format(final_loss, final_acc))
+    final_loss, final_acc,total_time_final, perimg_time_final= run_eval(model, test_dataloader, device)
+    print_log(f"\nInference elapsed raw time: {total_time_final} s")
+    print_log(f"Average time per image: {perimg_time_final} ms")
+    print_log(f"After Pruning:\nLoss: {final_loss}\nAccuracy: {final_acc}\n")
+
+    # 在剪枝之后
+    torch.save(model, 'temp_pruned_model.pth') 
+    pruned_model_size = os.path.getsize('temp_pruned_model.pth') / (1024 * 1024)  # 将字节转换为MB
+    # os.remove('temp_pruned_model.pth')
+    print_log(f"剪枝之后模型的存储占用大小: {pruned_model_size:.2f} MB\n")
 
     # clean up
     filePaths = [args.experiment_dir + '/model_tmp.pth', args.experiment_dir + '/mask_tmp.pth']
