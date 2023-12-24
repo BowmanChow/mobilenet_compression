@@ -12,6 +12,7 @@ from tqdm import tqdm
 import numpy as np
 import argparse
 from pathlib import Path
+import yaml
 
 import nni
 from nni.algorithms.compression.pytorch.quantization import (
@@ -73,6 +74,9 @@ def parse_args():
     parser.add_argument('--input_ckpt_name', type=str, default='checkpoint_best.pt')
     parser.add_argument('--output_dir', type=str, default='./pretrained_mobilenet_v2_torchhub/')
     parser.add_argument('--dataset_dir', type=str, default='./data/stanford-dogs')
+
+    parser.add_argument('--calc_initial_yaml', action='store_true', default=False)
+    parser.add_argument('--calc_final_yaml', action='store_true', default=False)
 
     args = parser.parse_args()
     return args
@@ -244,12 +248,23 @@ def main(args, quantizer_name=None):
 
     model = model.to(device)
     # evaluation before quantization 
-    count_flops(model, log)
+    flops, params = count_flops(model, log, device)
     initial_loss, initial_acc, total_time_bef, perimg_time_bef= run_test(model,device)
     print_log(f"Inference elapsed raw time: {total_time_bef} s")
     print_log(f"Average time per image: {perimg_time_bef} ms")
     print_log(f"Before Quantization: \n Loss: {initial_loss} \n Accuracy: {initial_acc} \n")
     
+    mflops = flops/1e6  
+    if args.calc_initial_yaml:
+        with open(args.output_dir / 'logs.yaml', 'w') as f:
+            yaml_data = {
+                'Accuracy': {'baseline': round(float(initial_acc), 2), 'method': None},
+                'FLOPs': {'baseline': round(mflops, 2), 'method': None},
+                'Parameters': {'baseline': round(params/1e6, 2), 'method': None},
+                'Infer_times': {'baseline': round(perimg_time_bef, 2), 'method': None},
+                'Storage': {'baseline': round(original_model_size, 2), 'method': None},
+            }
+            yaml.dump(yaml_data, f)
         
     # quantization
     config_list = [{
@@ -316,8 +331,21 @@ def main(args, quantizer_name=None):
     print_log(f"Inference elapsed_time (calculated by inference engine): {time_elapsed} s")
     print_log(f"Average time per image: {perimg_time_trt} ms")
     print_log(f"Final After Quantization: \n Loss: {final_loss} \n Accuracy: {final_acc} \n")
-    count_flops(model, log)
+    flops, params = count_flops(model, log, device)
             
+    mflops = flops/1e6
+    if args.calc_final_yaml:
+        yaml_data = yaml.safe_load(open(args.output_dir / 'logs.yaml', 'r'))
+        with open(args.output_dir / 'logs.yaml', 'w') as f:
+            yaml_data = {
+                'Accuracy': {'baseline': yaml_data['Accuracy']['baseline'], 'method': round(float(final_acc), 2)},
+                'FLOPs': {'baseline': yaml_data['FLOPs']['baseline'], 'method': round(mflops, 2)},
+                'Parameters': {'baseline': yaml_data['Parameters']['baseline'], 'method': round(params/1e6, 2)},
+                'Infer_times': {'baseline': yaml_data['Infer_times']['baseline'], 'method': round(perimg_time_trt, 2)},
+                'Storage': {'baseline': yaml_data['Storage']['baseline'], 'method': round(engine_size, 2)},
+                'Output_file': str(engine_path),
+            }
+            yaml.dump(yaml_data, f)
     log.close()
 
 

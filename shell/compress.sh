@@ -33,6 +33,17 @@ then
             --calc_initial_yaml \
             --calc_final_yaml \
 
+elif [ $prune_method == 'null' ] && [ $quan_method != 'null' ] # quan
+then
+    mkdir -p ${output_path}
+    CUDA_VISIBLE_DEVICES=${gpus} \
+        python ${model_path}/quant_mobileNet.py \
+            --input_dir=${input_path} \
+            --input_ckpt_name="checkpoint_best.pt" \
+            --output_dir=${output_path} \
+            --dataset_dir=${dataset_path} \
+            --calc_initial_yaml \
+            --calc_final_yaml \
 
 fi
 
