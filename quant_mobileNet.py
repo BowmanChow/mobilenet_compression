@@ -222,8 +222,8 @@ quantizer_name_to_class = {
 
             
 def main(args, quantizer_name=None):
-    # device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    device = torch.device("cpu")
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    # device = torch.device("cpu")
     quantizer_name = 'qat'
     log_name = experiment_dir + '/quantization_{}_{}{}.log'.format(quantizer_name, strftime("%Y%m%d%H%M", gmtime()), log_name_additions)
     log = open(log_name, 'w')
