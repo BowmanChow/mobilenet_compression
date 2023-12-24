@@ -32,9 +32,9 @@ torch.cuda.empty_cache()
 
 model_type = 'mobilenet_v2_torchhub'   # 'mobilenet_v1' 'mobilenet_v2' 'mobilenet_v2_torchhub'
 pretrained = True                    # load imagenet weight (only for 'mobilenet_v2_torchhub')
-experiment_dir = './pretrained_mobilenet_v2_torchhub/'
+experiment_dir = Path('./pretrained_mobilenet_v2_torchhub/')
 log_name_additions = ''
-checkpoint = experiment_dir + '/checkpoint_best.pt'
+checkpoint = experiment_dir / 'checkpoint_best.pt'
 input_size = 224
 n_classes = 120
 
