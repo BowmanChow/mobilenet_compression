@@ -32,13 +32,9 @@ torch.cuda.empty_cache()
 
 model_type = 'mobilenet_v2_torchhub'   # 'mobilenet_v1' 'mobilenet_v2' 'mobilenet_v2_torchhub'
 pretrained = True                    # load imagenet weight (only for 'mobilenet_v2_torchhub')
-experiment_dir = Path('./pretrained_mobilenet_v2_torchhub/')
 log_name_additions = ''
-checkpoint = experiment_dir / 'checkpoint_best.pt'
 input_size = 224
 n_classes = 120
-
-dataset_path = "./data/stanford-dogs"
 
 # reduce CPU usage
 train_dataset, train_dataloader = None, None
@@ -73,6 +69,13 @@ def get_model_size(model_or_engine):
 def parse_args():
     parser = argparse.ArgumentParser(description='Example code for quant MobileNetV2')
     parser.add_argument('--quan_mode', type=str, default='fp32',help='choose the quan mode for model')
+    parser.add_argument('--input_dir', type=str, default='./pretrained_mobilenet_v2_torchhub/')
+    parser.add_argument('--input_ckpt_name', type=str, default='checkpoint_best.pt')
+    parser.add_argument('--output_dir', type=str, default='./pretrained_mobilenet_v2_torchhub/')
+    parser.add_argument('--dataset_dir', type=str, default='./data/stanford-dogs')
+
+    args = parser.parse_args()
+    return args
 
 def run_test(model,device):
     model.eval()
@@ -225,18 +228,19 @@ def main(args, quantizer_name=None):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     # device = torch.device("cpu")
     quantizer_name = 'qat'
-    log_name = experiment_dir / f'quantization_{quantizer_name}_{log_name_additions}.log'
+    log_name = args.output_dir / f'quantization_{quantizer_name}_{log_name_additions}.log'
     log = open(log_name, 'w')
     def print_log(text: str):
         print(text)
         log.write(text)
     
+    checkpoint_path = args.input_dir / args.input_ckpt_name
     model = create_model(model_type=model_type, pretrained=pretrained, n_classes=n_classes,
-                         input_size=input_size, checkpoint=checkpoint)
+                         input_size=input_size, checkpoint=checkpoint_path)
     # model = torch.load('temp_pruned_model.pth')
     # 在剪枝+量化之前
     original_model_size = get_model_size(model)
-    print_log(f"初始模型存储占用大小: {original_model_size:.2f} MB")
+    print_log(f"初始模型 {checkpoint_path} 存储占用大小: {original_model_size:.2f} MB")
 
     model = model.to(device)
     # evaluation before quantization 
@@ -301,7 +305,7 @@ def main(args, quantizer_name=None):
 
     # 在量化加速完成后
     # 指定路径并获取 Engine 大小
-    engine_path = "temp_engine.trt"
+    engine_path = args.output_dir / "temp_engine.trt"
     engine.export_quantized_model(engine_path)
     engine_size = os.path.getsize(engine_path) / (1024 * 1024)  # 获取文件大小并转换为MB
     # os.remove(engine_path)  # 删除临时文件
@@ -318,8 +322,12 @@ def main(args, quantizer_name=None):
 
 
 if __name__ == '__main__':
-    # create here and reuse
-    dataset_path = Path(dataset_path)
+    args = parse_args()
+    args.input_dir = Path(args.input_dir)
+    args.output_dir = Path(args.output_dir)
+    args.dataset_dir = Path(args.dataset_dir)
+
+    dataset_path = args.dataset_dir
     train_dataset = TrainDataset(str(dataset_path / 'Processed/train'))
     train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
     train_dataset_for_pruner = EvalDataset(str(dataset_path / 'Processed/train'))
@@ -329,8 +337,5 @@ if __name__ == '__main__':
     test_dataset = EvalDataset(str(dataset_path / 'Processed/test'))
     test_dataloader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
 
-    # torch.set_num_threads(16)
-    
-    args = parse_args()
     main(args)
     
