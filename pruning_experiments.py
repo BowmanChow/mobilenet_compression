@@ -269,6 +269,7 @@ def run_pruning(args):
     torch.set_num_threads(args.n_workers)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
+    Path(args.output_dir).mkdir(exist_ok=True)
     log = open(args.output_dir + '/pruning_{}_{}_sparsity{}_{}.log'.format(
         args.pruner_name, args.pruning_mode, args.sparsity,
         strftime("%Y%m%d%H%M", gmtime())), 'w')
