@@ -225,25 +225,26 @@ def main(args, quantizer_name=None):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     # device = torch.device("cpu")
     quantizer_name = 'qat'
-    log_name = experiment_dir + '/quantization_{}_{}{}.log'.format(quantizer_name, strftime("%Y%m%d%H%M", gmtime()), log_name_additions)
+    log_name = experiment_dir / f'quantization_{quantizer_name}_{log_name_additions}.log'
     log = open(log_name, 'w')
+    def print_log(text: str):
+        print(text)
+        log.write(text)
     
     model = create_model(model_type=model_type, pretrained=pretrained, n_classes=n_classes,
                          input_size=input_size, checkpoint=checkpoint)
     # model = torch.load('temp_pruned_model.pth')
     # 在剪枝+量化之前
     original_model_size = get_model_size(model)
-    print(f"初始模型存储占用大小: {original_model_size:.2f} MB")
-    log.write(f"初始模型存储占用大小: {original_model_size:.2f} MB")
+    print_log(f"初始模型存储占用大小: {original_model_size:.2f} MB")
 
     model = model.to(device)
     # evaluation before quantization 
     count_flops(model, log)
     initial_loss, initial_acc, total_time_bef, perimg_time_bef= run_test(model,device)
-    print("Inference elapsed raw time: {}s".format(total_time_bef))
-    print("Average time per image: {}ms".format(perimg_time_bef))  # 计算每张图片的平均时间
-    print('Before Quantization:\nLoss: {}\nAccuracy: {}\n'.format(initial_loss, initial_acc))
-    log.write('Before Quantization:\nLoss: {}\nAccuracy: {}\n'.format(initial_loss, initial_acc))
+    print_log(f"Inference elapsed raw time: {total_time_bef} s")
+    print_log(f"Average time per image: {perimg_time_bef} ms")
+    print_log(f"Before Quantization: \n Loss: {initial_loss} \n Accuracy: {initial_acc} \n")
     
         
     # quantization
@@ -270,15 +271,14 @@ def main(args, quantizer_name=None):
     # run inference for the quantizer to finalize model
     #run_validation(model, valid_dataloader)
     # run_finetune(model, log, short_term=True)
-    calibration_config = quantizer.export_model(log_name.replace('.log', '.pt'), log_name.replace('.log', '_calibration.pt'))
+    calibration_config = quantizer.export_model(log_name.with_suffix('.pt'), log_name.with_suffix('.calibration.pt'))
     
     # finetuning and final evaluation
     run_finetune(model, log, device)
     final_loss, final_acc, total_time_ft, perimg_time_ft= run_test(model,device)
-    print("Inference elapsed raw time: {}s".format(total_time_ft))
-    print("Average time per image: {}ms".format(perimg_time_ft))  # 计算每张图片的平均时间
-    print('After Quantization:\nLoss: {}\nAccuracy: {}\n'.format(final_loss, final_acc))
-    log.write('After Quantization:\nLoss: {}\nAccuracy: {}'.format(final_loss, final_acc))
+    print_log(f"Inference elapsed raw time: {total_time_ft} s")
+    print_log(f"Average time per image: {perimg_time_ft} ms")
+    print_log(f"After Quantization: \n Loss: {final_loss} \n Accuracy: {final_acc} \n")
     count_flops(model, log)
 
     # # Inference with Speedup
@@ -304,18 +304,13 @@ def main(args, quantizer_name=None):
     engine.export_quantized_model(engine_path)
     engine_size = os.path.getsize(engine_path) / (1024 * 1024)  # 获取文件大小并转换为MB
     # os.remove(engine_path)  # 删除临时文件
-    print(f"量化加速后模型存储占用大小: {engine_size:.2f} MB")
-    log.write(f"量化加速后模型存储占用大小: {engine_size:.2f} MB")
+    print_log(f"量化加速后模型 {engine_path} 存储占用大小: {engine_size:.2f} MB")
 
     final_loss, final_acc, total_time_trt, time_elapsed, perimg_time_trt = run_test_trt(engine,device)
-    print("Inference elapsed raw time: {}s".format(total_time_trt))
-    print("Inference elapsed_time (calculated by inference engine): {}s".format(time_elapsed))
-    print("Average time per image: {}ms".format(perimg_time_trt))  # 计算每张图片的平均时间
-    print('Final After Quantization:\nLoss: {}\nAccuracy: {}\n'.format(final_loss, final_acc))
-    log.write("Inference elapsed raw time: {}s\n".format(total_time_trt))
-    log.write("Inference elapsed_time (calculated by inference engine): {}s\n".format(time_elapsed))
-    log.write("Average time per image: {}ms\n".format(perimg_time_trt))  # 计算每张图片的平均时间
-    log.write('Final After Quantization:\nLoss: {}\nAccuracy: {}\n'.format(final_loss, final_acc))
+    print_log(f"Inference elapsed raw time: {total_time_trt} s")
+    print_log(f"Inference elapsed_time (calculated by inference engine): {time_elapsed} s")
+    print_log(f"Average time per image: {perimg_time_trt} ms")
+    print_log(f"Final After Quantization: \n Loss: {final_loss} \n Accuracy: {final_acc} \n")
     count_flops(model, log)
             
     log.close()
