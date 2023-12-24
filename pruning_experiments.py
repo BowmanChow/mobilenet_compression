@@ -378,7 +378,7 @@ def run_pruning(args):
     intermediate_loss, intermediate_acc, total_time_befft, perimg_time_befft = run_eval(model, test_dataloader, device)
     print_log(f"\nInference elapsed raw time: {total_time_befft} s")
     print_log(f"Average time per image: {perimg_time_befft} ms")
-    print_log(f"Before Finetuning:\nLoss: {intermediate_loss}\nAccuracy: {intermediate_acc}\n")
+    print_log(f"After Pruning, Before Finetuning:\nLoss: {intermediate_loss}\nAccuracy: {intermediate_acc}\n")
 
     # finetuning
     if args.kd:
