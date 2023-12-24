@@ -222,12 +222,12 @@ def parse_args():
                         choices=['conv0', 'conv1', 'conv2', 'conv1andconv2', 'all'])
     parser.add_argument('--sparsity', type=float, default=0.5,
                         help='target sparsity')
-    parser.add_argument('--pruner_name', type=str, default='l1',
+    parser.add_argument('--pruner_name', type=str, default='fpgm',
                         choices=['l1', 'l2', 'slim', 'agp',
                                  'fpgm', 'mean_activation', 'apoz', 'taylorfo'],
                         help='pruner to use')
     # for agp only
-    parser.add_argument('--agp_pruning_alg', default='l1',
+    parser.add_argument('--agp_pruning_alg', default='fpgm',
                         choices=['l1', 'l2', 'slim', 'fpgm',
                                  'mean_activation', 'apoz', 'taylorfo'],
                         help='pruner to use for agp')
@@ -237,7 +237,7 @@ def parse_args():
                         help='number of epochs per iteration for agp')
 
     # speed-up
-    parser.add_argument('--speed_up', action='store_true', default=False,
+    parser.add_argument('--speed_up', action='store_true', default=True,
                         help='Whether to speed-up the pruned model')
 
     # finetuning parameters
