@@ -12,6 +12,7 @@ from torch.utils.data import DataLoader
 from tqdm import tqdm
 import numpy as np
 from pathlib import Path
+import yaml
 
 import nni
 from nni.compression.pytorch import ModelSpeedup
@@ -256,6 +257,9 @@ def parse_args():
     parser.add_argument('--temp', type=float, default=8,
                         help='Temperature for knowledge distillation loss')
 
+    parser.add_argument('--calc_initial_yaml', action='store_true', default=False)
+    parser.add_argument('--calc_final_yaml', action='store_true', default=False)
+
     args = parser.parse_args()
     return args
 
@@ -296,11 +300,23 @@ def run_pruning(args):
         teacher_model = copy.deepcopy(model)
 
     # evaluation before pruning
-    # count_flops(model, log, device)
+    flops, params = count_flops(model, log, device)
     initial_loss, initial_acc, total_time_bef, perimg_time_bef = run_eval(model, test_dataloader, device)
     print_log(f"\nInference elapsed raw time: {total_time_bef} s")
     print_log(f"Average time per image: {perimg_time_bef} ms")
     print_log(f"Before Pruning:\nLoss: {initial_loss}\nAccuracy: {initial_acc}\n")
+
+    mflops = flops/1e6
+    if args.calc_initial_yaml:
+        with open(os.path.join(args.output_dir, 'logs.yaml'), 'w') as f:
+            yaml_data = {
+                'Accuracy': {'baseline': round(float(initial_acc), 2), 'method': None},
+                'FLOPs': {'baseline': round(mflops, 2), 'method': None},
+                'Parameters': {'baseline': round(params/1e6, 2), 'method': None},
+                'Infer_times': {'baseline': round(perimg_time_bef, 2), 'method': None},
+                'Storage': {'baseline': round(original_model_size, 2), 'method': None},
+            }
+            yaml.dump(yaml_data, f)
 
     # set up config list and pruner
     config_list = []
@@ -401,6 +417,21 @@ def run_pruning(args):
     pruned_model_size = os.path.getsize(pruned_model_path) / (1024 * 1024)  # 将字节转换为MB
     # os.remove('temp_pruned_model.pth')
     print_log(f"剪枝之后模型 {pruned_model_path} 的存储占用大小: {pruned_model_size:.2f} MB\n")
+
+    flops, params = count_flops(model, log, device)
+    mflops = flops/1e6
+    if args.calc_final_yaml:
+        yaml_data = yaml.safe_load(open(os.path.join(args.output_dir, 'logs.yaml'), 'r'))
+        with open(os.path.join(args.output_dir, 'logs.yaml'), 'w') as f:
+            yaml_data = {
+                'Accuracy': {'baseline': yaml_data['Accuracy']['baseline'], 'method': round(float(final_acc), 2)},
+                'FLOPs': {'baseline': yaml_data['FLOPs']['baseline'], 'method': round(mflops, 2)},
+                'Parameters': {'baseline': yaml_data['Parameters']['baseline'], 'method': round(params/1e6, 2)},
+                'Infer_times': {'baseline': yaml_data['Infer_times']['baseline'], 'method': round(perimg_time_final, 2)},
+                'Storage': {'baseline': yaml_data['Storage']['baseline'], 'method': round(pruned_model_size, 2)},
+                'Output_file': str(pruned_model_path),
+            }
+            yaml.dump(yaml_data, f)
 
     # clean up
     filePaths = [model_temp_path, mask_temp_path]
