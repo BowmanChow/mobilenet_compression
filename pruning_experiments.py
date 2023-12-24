@@ -206,7 +206,7 @@ def trainer_helper_with_distillation(model, teacher_model, alpha, temperature, o
 def parse_args():
     parser = argparse.ArgumentParser(description='Example code for pruning MobileNetV2')
 
-    parser.add_argument('--experiment_dir', type=str, required=True,
+    parser.add_argument('--experiment_dir', type=str, default='./pretrained_mobilenet_v2_torchhub',
                         help='directory containing the pretrained model')
     parser.add_argument('--input_dir', type=str, default='./pretrained_mobilenet_v2_torchhub',
                         help='directory containing the input model')
