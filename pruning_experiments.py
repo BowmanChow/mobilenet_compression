@@ -367,12 +367,13 @@ def run_pruning(args):
 
     # model speedup
     pruner._unwrap_model()
+    # count_flops(model, log, device)
     if args.speed_up:
         dummy_input = torch.rand(1,3,224,224).to(device)
-        ms = ModelSpeedup(model, dummy_input, args.experiment_dir + './mask_temp.pth')
+        ms = ModelSpeedup(model, dummy_input, mask_temp_path)
         ms.speedup_model()
-        print(model)
-        count_flops(model, log)
+        # print(model)
+        count_flops(model, log, device)
 
     intermediate_loss, intermediate_acc, total_time_befft, perimg_time_befft = run_eval(model, test_dataloader, device)
     print_log(f"\nInference elapsed raw time: {total_time_befft} s")
@@ -392,7 +393,7 @@ def run_pruning(args):
     final_loss, final_acc,total_time_final, perimg_time_final= run_eval(model, test_dataloader, device)
     print_log(f"\nInference elapsed raw time: {total_time_final} s")
     print_log(f"Average time per image: {perimg_time_final} ms")
-    print_log(f"After Pruning:\nLoss: {final_loss}\nAccuracy: {final_acc}\n")
+    print_log(f"After Pruning and Finetuning:\nLoss: {final_loss}\nAccuracy: {final_acc}\n")
 
     # 在剪枝之后
     pruned_model_path = os.path.join(args.output_dir, 'temp_pruned_model.pth')
