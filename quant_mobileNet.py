@@ -325,6 +325,7 @@ if __name__ == '__main__':
     args = parse_args()
     args.input_dir = Path(args.input_dir)
     args.output_dir = Path(args.output_dir)
+    args.output_dir.mkdir(exist_ok=True)
     args.dataset_dir = Path(args.dataset_dir)
 
     dataset_path = args.dataset_dir
