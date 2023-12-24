@@ -11,6 +11,7 @@ from torch.utils.data import DataLoader
 from tqdm import tqdm
 import numpy as np
 import argparse
+from pathlib import Path
 
 import nni
 from nni.algorithms.compression.pytorch.quantization import (
@@ -36,6 +37,8 @@ log_name_additions = ''
 checkpoint = experiment_dir + '/checkpoint_best.pt'
 input_size = 224
 n_classes = 120
+
+dataset_path = "./data/stanford-dogs"
 
 # reduce CPU usage
 train_dataset, train_dataloader = None, None
@@ -320,13 +323,14 @@ def main(args, quantizer_name=None):
 
 if __name__ == '__main__':
     # create here and reuse
-    train_dataset = TrainDataset('./data/stanford-dogs/Processed/train')
+    dataset_path = Path(dataset_path)
+    train_dataset = TrainDataset(str(dataset_path / 'Processed/train'))
     train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
-    train_dataset_for_pruner = EvalDataset('./data/stanford-dogs/Processed/train')
+    train_dataset_for_pruner = EvalDataset(str(dataset_path / 'Processed/train'))
     train_dataloader_for_pruner = DataLoader(train_dataset, batch_size=batch_size, shuffle=False)
-    valid_dataset = EvalDataset('./data/stanford-dogs/Processed/valid')
+    valid_dataset = EvalDataset(str(dataset_path / 'Processed/valid'))
     valid_dataloader = DataLoader(valid_dataset, batch_size=batch_size, shuffle=False)
-    test_dataset = EvalDataset('./data/stanford-dogs/Processed/test')
+    test_dataset = EvalDataset(str(dataset_path / 'Processed/test'))
     test_dataloader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
 
     # torch.set_num_threads(16)
