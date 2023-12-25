@@ -45,6 +45,29 @@ then
             --calc_initial_yaml \
             --calc_final_yaml \
 
+elif [ $prune_method != 'null' ] && [ $quan_method != 'null' ] # prune and quan
+then
+    mkdir -p ${output_path}
+    CUDA_VISIBLE_DEVICES=${gpus} \
+        python ${model_path}/pruning_experiments.py \
+            --input_dir=${input_path} \
+            --output_dir=${output_path} \
+            --dataset_dir=${dataset_path} \
+            --learning_rate=${ft_lr} \
+            --finetune_epochs=${ft_epochs} \
+            --batch_size=${ft_bs} \
+            --calc_initial_yaml \
+            # --calc_final_yaml \
+
+    CUDA_VISIBLE_DEVICES=${gpus} \
+        python ${model_path}/quant_mobileNet.py \
+            --input_dir=${output_path} \
+            --input_ckpt_name="temp_pruned_model.pth" \
+            --output_dir=${output_path} \
+            --dataset_dir=${dataset_path} \
+            --calc_final_yaml \
+            # --calc_initial_yaml \
+
 fi
 
 conda deactivate
