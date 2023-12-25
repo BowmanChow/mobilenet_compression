@@ -13,6 +13,7 @@ import numpy as np
 import argparse
 from pathlib import Path
 import yaml
+from collections import OrderedDict
 
 import nni
 from nni.algorithms.compression.pytorch.quantization import (
@@ -239,9 +240,11 @@ def main(args, quantizer_name=None):
         log.write(text)
     
     checkpoint_path = args.input_dir / args.input_ckpt_name
-    model = create_model(model_type=model_type, pretrained=pretrained, n_classes=n_classes,
-                         input_size=input_size, checkpoint=checkpoint_path)
-    # model = torch.load('temp_pruned_model.pth')
+    model = torch.load(checkpoint_path)
+    if isinstance(model, OrderedDict):
+        model = create_model(model_type=model_type, pretrained=pretrained, n_classes=n_classes,
+                            input_size=input_size, checkpoint=checkpoint_path)
+
     # 在剪枝+量化之前
     original_model_size = get_model_size(model)
     print_log(f"初始模型 {checkpoint_path} 存储占用大小: {original_model_size:.2f} MB")
