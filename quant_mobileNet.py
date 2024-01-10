@@ -237,7 +237,7 @@ def main(args, quantizer_name=None):
     log = open(log_name, 'w')
     def print_log(text: str):
         print(text)
-        log.write(text)
+        log.write(f"{text}\n")
     
     checkpoint_path = args.input_dir / args.input_ckpt_name
     model = torch.load(checkpoint_path)

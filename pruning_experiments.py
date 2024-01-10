@@ -275,7 +275,7 @@ def run_pruning(args):
         strftime("%Y%m%d%H%M", gmtime())), 'w')
     def print_log(text: str):
         print(text)
-        log.write(text)
+        log.write(f"{text}\n")
     
     dataset_path = Path(args.dataset_dir) / "Processed"
     print_log(f"Building Dataset in {dataset_path}")
