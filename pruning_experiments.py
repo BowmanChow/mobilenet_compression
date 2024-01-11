@@ -244,7 +244,7 @@ def parse_args():
     # finetuning parameters
     parser.add_argument('--n_workers', type=int, default=16,
                         help='number of threads')
-    parser.add_argument('--finetune_epochs', type=int, default=180,
+    parser.add_argument('--finetune_epochs', type=int, default=3,
                         help='number of epochs to finetune the model')
     parser.add_argument('--learning_rate', type=float, default=1e-4)
     parser.add_argument('--weight_decay', type=float, default=0.0)
