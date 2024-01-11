@@ -221,7 +221,7 @@ def parse_args():
     # pruner
     parser.add_argument('--pruning_mode', type=str, default='conv1andconv2',
                         choices=['conv0', 'conv1', 'conv2', 'conv1andconv2', 'all'])
-    parser.add_argument('--sparsity', type=float, default=0.5,
+    parser.add_argument('--sparsity', type=float, default=0.2,
                         help='target sparsity')
     parser.add_argument('--pruner_name', type=str, default='fpgm',
                         choices=['l1', 'l2', 'slim', 'agp',
