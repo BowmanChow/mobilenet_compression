@@ -433,6 +433,11 @@ def run_pruning(args):
                 'Output_file': str(pruned_model_path),
             }
             yaml.dump(yaml_data, f)
+        model_vis_save_dir = Path(args.output_dir).parents[2] / "model_vis" / f"stanford-dogs-mbnet"
+        model_vis_save_dir.mkdir(exist_ok=True)
+        torch.save(
+            model,
+            os.path.join(model_vis_save_dir, f"online-fpgm.pth"))
 
     # clean up
     filePaths = [model_temp_path, mask_temp_path]
