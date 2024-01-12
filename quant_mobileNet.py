@@ -294,7 +294,7 @@ def main(args, quantizer_name=None):
     # run inference for the quantizer to finalize model
     # run_validation(model, valid_dataloader, device=device)
     # run_finetune(model, log, device=device, short_term=True)
-    # calibration_config = quantizer.export_model(log_name.with_suffix('.pt'), log_name.with_suffix('.calibration.pt'))
+    calibration_config = quantizer.export_model(log_name.with_suffix('.pt'), log_name.with_suffix('.calibration.pt'))
     # print(f"{calibration_config = }")
     
     # finetuning and final evaluation
