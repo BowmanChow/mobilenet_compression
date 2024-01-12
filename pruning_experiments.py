@@ -354,7 +354,7 @@ def run_pruning(args):
                 'op_names': ['features.{}.conv.2'.format(x) for x in range(2, 18)],
                 'sparsity': args.sparsity
             })
-    print(config_list)
+    # print(config_list)
 
     kwargs = {}
     if args.pruner_name in ['slim', 'taylorfo', 'mean_activation', 'apoz', 'agp']:
