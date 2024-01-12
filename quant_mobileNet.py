@@ -291,13 +291,13 @@ def main(args, quantizer_name=None):
     quantizer = quantizer_name_to_class[quantizer_name](model, config_list, **kwargs)
     quantizer.compress()
     # run inference for the quantizer to finalize model
-    #run_validation(model, valid_dataloader)
-    run_finetune(model, log, device=device, short_term=True)
-    calibration_config = quantizer.export_model(log_name.with_suffix('.pt'), log_name.with_suffix('.calibration.pt'))
+    # run_validation(model, valid_dataloader, device=device)
+    # run_finetune(model, log, device=device, short_term=True)
+    # calibration_config = quantizer.export_model(log_name.with_suffix('.pt'), log_name.with_suffix('.calibration.pt'))
     # print(f"{calibration_config = }")
     
     # finetuning and final evaluation
-    run_finetune(model, log, device)
+    # run_finetune(model, log, device)
     final_loss, final_acc, total_time_ft, perimg_time_ft= run_test(model,device)
     print_log(f"Inference elapsed raw time: {total_time_ft} s")
     print_log(f"Average time per image: {perimg_time_ft} ms")
