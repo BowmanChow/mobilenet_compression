@@ -72,7 +72,7 @@ def run_eval(model, dataloader, device):
         end_time_raw = perf_counter()
 
     total_time = end_time_raw - start_time_raw
-    perimg_time = total_time / total_images *1000
+    perimg_time = float(total_time) / float(total_images) *1000
     final_loss = np.array(loss_list).mean()
     final_acc = np.array(acc_list).mean()
 

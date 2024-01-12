@@ -102,7 +102,7 @@ def run_test(model,device):
         end_time_raw = perf_counter()
 
     total_time = end_time_raw - start_time_raw
-    perimg_time = total_time / total_images *1000
+    perimg_time = float(total_time) / float(total_images) *1000
     final_loss = np.array(loss_list).mean()
     final_acc = np.array(acc_list).mean()
 
@@ -134,8 +134,9 @@ def run_test_trt(engine,device):
     final_acc = np.array(acc_list).mean()
     total_time_trt = end_time_raw - start_time_raw
     perimg_time_trt = total_time_trt / total_images *1000
+    perimg_time_elapsed_trt = float(time_elapsed) / float(total_images) *1000
     
-    return final_loss, final_acc, total_time_trt, time_elapsed, perimg_time_trt
+    return final_loss, final_acc, total_time_trt, time_elapsed, perimg_time_trt, perimg_time_elapsed_trt
 
 
 def run_validation(model, valid_dataloader,device):
@@ -329,7 +330,7 @@ def main(args, quantizer_name=None):
     # os.remove(engine_path)  # 删除临时文件
     print_log(f"量化加速后模型 {engine_path} 存储占用大小: {engine_size:.2f} MB")
 
-    final_loss, final_acc, total_time_trt, time_elapsed, perimg_time_trt = run_test_trt(engine,device)
+    final_loss, final_acc, total_time_trt, time_elapsed, perimg_time_trt, perimg_time_elapsed_trt = run_test_trt(engine,device)
     print_log(f"Inference elapsed raw time: {total_time_trt} s")
     print_log(f"Inference elapsed_time (calculated by inference engine): {time_elapsed} s")
     print_log(f"Average time per image: {perimg_time_trt} ms")
