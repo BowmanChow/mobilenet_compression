@@ -311,7 +311,7 @@ def run_pruning(args):
     if args.calc_initial_yaml:
         with open(os.path.join(args.output_dir, 'logs.yaml'), 'w') as f:
             yaml_data = {
-                'Accuracy': {'baseline': round(float(initial_acc), 2), 'method': None},
+                'Accuracy': {'baseline': round(100*float(initial_acc), 2), 'method': None},
                 'FLOPs': {'baseline': round(mflops, 2), 'method': None},
                 'Parameters': {'baseline': round(params/1e6, 2), 'method': None},
                 'Infer_times': {'baseline': round(perimg_time_bef, 2), 'method': None},
@@ -425,7 +425,7 @@ def run_pruning(args):
         yaml_data = yaml.safe_load(open(os.path.join(args.output_dir, 'logs.yaml'), 'r'))
         with open(os.path.join(args.output_dir, 'logs.yaml'), 'w') as f:
             yaml_data = {
-                'Accuracy': {'baseline': yaml_data['Accuracy']['baseline'], 'method': round(float(final_acc), 2)},
+                'Accuracy': {'baseline': yaml_data['Accuracy']['baseline'], 'method': round(100*float(final_acc), 2)},
                 'FLOPs': {'baseline': yaml_data['FLOPs']['baseline'], 'method': round(mflops, 2)},
                 'Parameters': {'baseline': yaml_data['Parameters']['baseline'], 'method': round(params/1e6, 2)},
                 'Infer_times': {'baseline': yaml_data['Infer_times']['baseline'], 'method': round(perimg_time_final, 2)},
