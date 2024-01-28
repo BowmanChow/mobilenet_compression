@@ -30,6 +30,7 @@ then
             --learning_rate=${ft_lr} \
             --finetune_epochs=${ft_epochs} \
             --batch_size=${ft_bs} \
+            --sparsity=${prune_sparisity} \
             --calc_initial_yaml \
             --calc_final_yaml \
 
@@ -56,6 +57,7 @@ then
             --learning_rate=${ft_lr} \
             --finetune_epochs=${ft_epochs} \
             --batch_size=${ft_bs} \
+            --sparsity=${prune_sparisity} \
             --calc_initial_yaml \
             # --calc_final_yaml \
 
