@@ -35,6 +35,7 @@ compress_modules._logger.setLevel(logging.WARNING)
 
 
 from utils import *
+import gc
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -410,6 +411,10 @@ def run_pruning(args):
         model = run_finetune(model, train_dataloader, valid_dataloader, device, n_epochs=args.finetune_epochs,
                              learning_rate=args.learning_rate, weight_decay=args.weight_decay)
         
+    del pruner
+    del train_dataloader
+    gc.collect()
+    torch.cuda.empty_cache()
     # final evaluation
     final_loss, final_acc,total_time_final, perimg_time_final= run_eval(model, test_dataloader, device)
     print_log(f"\nInference elapsed raw time: {total_time_final} s")
