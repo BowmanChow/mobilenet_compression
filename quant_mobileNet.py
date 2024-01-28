@@ -321,7 +321,15 @@ def main(args, quantizer_name=None):
     
     batch_size = 32
     input_shape = (batch_size, 3, 224, 224)
-    engine = ModelSpeedupTensorRT(model, input_shape, config=calibration_config, batchsize=batch_size)
+    engine = ModelSpeedupTensorRT(
+        model,
+        input_shape,
+        config=None,
+        calib_data_loader=valid_dataloader,
+        batchsize=batch_size,
+        extra_layer_bit=16,
+        onnx_path=os.path.join(args.output_dir, "temp_engine.onnx"),
+    )
     # engine = ModelSpeedupTensorRT(model, input_shape, config=calibration_config, batchsize=batch_size,extra_layer_bit=extra_layer_bit)
 
     engine.compress()
