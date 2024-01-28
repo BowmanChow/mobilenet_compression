@@ -132,3 +132,9 @@ dmypy.json
 data/
 experiments/
 pretrained_*/
+
+# quantized output
+*.cache
+*.onnx
+*.trt
+*.pth
