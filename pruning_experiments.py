@@ -60,18 +60,22 @@ def run_eval(model, dataloader, device):
     acc_list, loss_list = [], []
     with torch.no_grad():
         start_time_raw = perf_counter()
+        total_time = 0
         for i, (inputs, labels) in enumerate(tqdm(dataloader)):
+            start_time_raw = perf_counter()
             inputs, labels = inputs.float().to(device), labels.to(device)
             preds= model(inputs)
             pred_idx = preds.max(1).indices
+            end_time_raw = perf_counter()
+            total_time += end_time_raw - start_time_raw
             acc = (pred_idx == labels).sum().item() / labels.size(0)
             acc_list.append(acc)
             loss = loss_func(preds, labels).item()
             loss_list.append(loss)
             total_images += inputs.size(0)  # 计算总图片数
-        end_time_raw = perf_counter()
+        # end_time_raw = perf_counter()
 
-    total_time = end_time_raw - start_time_raw
+    # total_time = end_time_raw - start_time_raw
     perimg_time = float(total_time) / float(total_images) *1000
     final_loss = np.array(loss_list).mean()
     final_acc = np.array(acc_list).mean()
@@ -314,7 +318,7 @@ def run_pruning(args):
                 'Accuracy': {'baseline': round(100*float(initial_acc), 2), 'method': None},
                 'FLOPs': {'baseline': round(mflops, 2), 'method': None},
                 'Parameters': {'baseline': round(params/1e6, 2), 'method': None},
-                'Infer_times': {'baseline': round(perimg_time_bef, 2), 'method': None},
+                'Infer_times': {'baseline': round(total_time_bef, 2), 'method': None},
                 'Storage': {'baseline': round(original_model_size, 2), 'method': None},
             }
             yaml.dump(yaml_data, f)
@@ -428,7 +432,7 @@ def run_pruning(args):
                 'Accuracy': {'baseline': yaml_data['Accuracy']['baseline'], 'method': round(100*float(final_acc), 2)},
                 'FLOPs': {'baseline': yaml_data['FLOPs']['baseline'], 'method': round(mflops, 2)},
                 'Parameters': {'baseline': yaml_data['Parameters']['baseline'], 'method': round(params/1e6, 2)},
-                'Infer_times': {'baseline': yaml_data['Infer_times']['baseline'], 'method': round(perimg_time_final, 2)},
+                'Infer_times': {'baseline': yaml_data['Infer_times']['baseline'], 'method': round(total_time_final, 2)},
                 'Storage': {'baseline': yaml_data['Storage']['baseline'], 'method': round(pruned_model_size, 2)},
                 'Output_file': str(pruned_model_path),
             }
