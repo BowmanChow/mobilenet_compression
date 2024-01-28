@@ -262,7 +262,7 @@ def main(args, quantizer_name=None):
     if args.calc_initial_yaml:
         with open(args.output_dir / 'logs.yaml', 'w') as f:
             yaml_data = {
-                'Accuracy': {'baseline': round(float(initial_acc), 2), 'method': None},
+                'Accuracy': {'baseline': round(100*float(initial_acc), 2), 'method': None},
                 'FLOPs': {'baseline': round(mflops, 2), 'method': None},
                 'Parameters': {'baseline': round(params/1e6, 2), 'method': None},
                 'Infer_times': {'baseline': round(perimg_time_bef, 2), 'method': None},
@@ -342,7 +342,7 @@ def main(args, quantizer_name=None):
         yaml_data = yaml.safe_load(open(args.output_dir / 'logs.yaml', 'r'))
         with open(args.output_dir / 'logs.yaml', 'w') as f:
             yaml_data = {
-                'Accuracy': {'baseline': yaml_data['Accuracy']['baseline'], 'method': round(float(final_acc), 2)},
+                'Accuracy': {'baseline': yaml_data['Accuracy']['baseline'], 'method': round(100*float(final_acc), 2)},
                 'FLOPs': {'baseline': yaml_data['FLOPs']['baseline'], 'method': round(mflops, 2)},
                 'Parameters': {'baseline': yaml_data['Parameters']['baseline'], 'method': round(params/1e6, 2)},
                 'Infer_times': {'baseline': yaml_data['Infer_times']['baseline'], 'method': round(perimg_time_trt, 2)},
