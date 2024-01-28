@@ -10,6 +10,7 @@ import torch.nn as nn
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 import numpy as np
+import argparse
 
 import nni
 from nni.algorithms.compression.pytorch.quantization import (
@@ -23,15 +24,16 @@ from nni.algorithms.compression.pytorch.quantization import (
 from nni.compression.pytorch.quantization_speedup import ModelSpeedupTensorRT
 
 from utils import *
+torch.cuda.empty_cache()
 
-
-os.environ["CUDA_VISIBLE_DEVICES"]="0"
-
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+# os.environ["CUDA_VISIBLE_DEVICES"]="2"
+# torch.cuda.set_device(2)
+# device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+device = torch.device("cpu")
 
 model_type = 'mobilenet_v2_torchhub'   # 'mobilenet_v1' 'mobilenet_v2' 'mobilenet_v2_torchhub'
-pretrained = False                     # load imagenet weight (only for 'mobilenet_v2_torchhub')
-experiment_dir = './experiments/pretrained_mobilenet_v2_best/'
+pretrained = True                    # load imagenet weight (only for 'mobilenet_v2_torchhub')
+experiment_dir = './pretrained_mobilenet_v2_torchhub/'
 log_name_additions = ''
 checkpoint = experiment_dir + '/checkpoint_best.pt'
 input_size = 224
@@ -45,12 +47,17 @@ test_dataset, test_dataloader = None, None
 
 # optimization parameters    (for finetuning)
 batch_size = 32
-n_epochs = 2
+n_epochs = 3
 learning_rate = 1e-4         # 1e-4 for finetuning, 1e-3 (?) for training from scratch
 
 
+def parse_args():
+    parser = argparse.ArgumentParser(description='Example code for quant MobileNetV2')
+    parser.add_argument('--quan_mode', type=str, default='fp32',help='choose the quan mode for model')
+
 def run_test(model):
     model.eval()
+    total_images = 0
     loss_func = nn.CrossEntropyLoss()
     acc_list, loss_list = [], []
     with torch.no_grad():
@@ -58,14 +65,17 @@ def run_test(model):
         for i, (inputs, labels) in enumerate(tqdm(test_dataloader)):
             inputs, labels = inputs.float().to(device), labels.to(device)
             preds = model(inputs)
+            preds = preds.to(device)
             pred_idx = preds.max(1).indices
             acc = (pred_idx == labels).sum().item() / labels.size(0)
             acc_list.append(acc)
             loss = loss_func(preds, labels).item()
             loss_list.append(loss)
+            total_images += inputs.size(0)  # 计算总图片数
         end_time_raw = perf_counter()
 
     print("Inference elapsed raw time: {}s".format(end_time_raw - start_time_raw))
+    print("Average time per image: {}ms".format((end_time_raw - start_time_raw) / total_images *1000))  # 计算每张图片的平均时间
     final_loss = np.array(loss_list).mean()
     final_acc = np.array(acc_list).mean()
 
@@ -74,28 +84,34 @@ def run_test(model):
 
 def run_test_trt(engine):
     time_elapsed = 0
+    total_images = 0
     loss_func = nn.CrossEntropyLoss()
     acc_list, loss_list = [], []
     with torch.no_grad():
         start_time_raw = perf_counter()
         for i, (inputs, labels) in enumerate(tqdm(test_dataloader)):
+            # inputs, labels = inputs.float().to(device), labels.to(device)
             inputs, labels = inputs.float().to(device), labels.to(device)
+            print(type(inputs),type(labels))
             preds, time = engine.inference(inputs)
-            preds = preds.cuda()
+            preds = preds.to(device)
+            # preds = preds.cuda()
             pred_idx = preds.max(1).indices
             acc = (pred_idx == labels).sum().item() / labels.size(0)
             acc_list.append(acc)
             loss = loss_func(preds, labels).item()
             loss_list.append(loss)
             time_elapsed += time
+            total_images += inputs.size(0)  # 计算总图片数
         end_time_raw = perf_counter()
 
     final_loss = np.array(loss_list).mean()
     final_acc = np.array(acc_list).mean()
 
-    print("Inference elapsed raw time: {}ms".format(end_time_raw - start_time_raw))
+    print("Inference elapsed raw time: {}s".format(end_time_raw - start_time_raw))
     print("Inference elapsed_time (calculated by inference engine): {}s".format(time_elapsed))
-
+    print("Average time per image: {}ms".format(time_elapsed / total_images *1000))  # 计算每张图片的平均时间
+    
     return final_loss, final_acc
 
 
@@ -108,6 +124,7 @@ def run_validation(model, valid_dataloader):
         for i, (inputs, labels) in enumerate(tqdm(valid_dataloader)):
             inputs, labels = inputs.float().to(device), labels.to(device)
             preds= model(inputs)
+            preds = preds.to(device)
             pred_idx = preds.max(1).indices
             acc = (pred_idx == labels).sum().item() / labels.size(0)
             acc_list.append(acc)
@@ -138,6 +155,7 @@ def run_finetune(model, log, optimizer=None, short_term=False):
             optimizer.zero_grad()
             inputs, labels = inputs.float().to(device), labels.to(device)
             preds = model(inputs)
+            preds = preds.to(device)
             loss = criterion(preds, labels)
             loss_list.append(loss.item())
             loss.backward(retain_graph=True)
@@ -186,7 +204,7 @@ quantizer_name_to_class = {
 }
 
             
-def main(quantizer_name=None):
+def main(args, quantizer_name=None):
     quantizer_name = 'qat'
     
     log_name = experiment_dir + '/quantization_{}_{}{}.log'.format(quantizer_name, strftime("%Y%m%d%H%M", gmtime()), log_name_additions)
@@ -195,16 +213,13 @@ def main(quantizer_name=None):
     model = create_model(model_type=model_type, pretrained=pretrained, n_classes=n_classes,
                          input_size=input_size, checkpoint=checkpoint)
     model = model.to(device)
-    print(model)
 
     # evaluation before quantization 
-    '''
     count_flops(model, log)
-    
     initial_loss, initial_acc = run_test(model)
     print('Before Quantization:\nLoss: {}\nAccuracy: {}'.format(initial_loss, initial_acc))
     log.write('Before Quantization:\nLoss: {}\nAccuracy: {}\n'.format(initial_loss, initial_acc))
-    '''
+    
     # for name, weight in model.named_parameters():
     #     print(name, weight.max().item(), weight.min().item())
         
@@ -212,8 +227,8 @@ def main(quantizer_name=None):
     config_list = [{
         'quant_types': ['weight', 'output'],
         'quant_bits': {
-            'weight': 8,
-            'output': 8
+            'weight': 16,
+            'output': 16
         },
         'op_types':['Conv2d', 'Linear']
     }]
@@ -221,7 +236,9 @@ def main(quantizer_name=None):
     kwargs = {}
     optimizer = None
     if quantizer_name == 'qat':
-        dummy_input = torch.rand(1, 3, 224, 224).cuda()
+        # dummy_input = torch.rand(1, 3, 224, 224).cuda()
+        dummy_input = torch.rand(1, 3, 224, 224).to(device)
+        # dummy_input = torch.rand(1, 3, 224, 224)
         optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
         kwargs['dummy_input'] = dummy_input
         kwargs['optimizer'] = optimizer
@@ -230,23 +247,34 @@ def main(quantizer_name=None):
     quantizer.compress()
     # run inference for the quantizer to finalize model
     #run_validation(model, valid_dataloader)
-    run_finetune(model, log, short_term=True)
+    # run_finetune(model, log, short_term=True)
     calibration_config = quantizer.export_model(log_name.replace('.log', '.pt'), log_name.replace('.log', '_calibration.pt'))
-    print(calibration_config)
-    for name, weight in model.named_parameters():
-        print(name, weight.max().item(), weight.min().item())
+    # print(calibration_config)
+    # for name, weight in model.named_parameters():
+    #     print(name, weight.max().item(), weight.min().item())
 
     
     # finetuning and final evaluation
-    # run_finetune(model, log)
+    run_finetune(model, log)
     final_loss, final_acc = run_test(model)
     print('After Quantization:\nLoss: {}\nAccuracy: {}'.format(final_loss, final_acc))
     log.write('After Quantization:\nLoss: {}\nAccuracy: {}'.format(final_loss, final_acc))
+    count_flops(model, log)
 
-    # Inference with Speedup
+    # # Inference with Speedup
+    # if args.quan_mode == "int8":
+    #     extra_layer_bit = 8
+    # elif args.quan_mode == "fp16":
+    #     extra_layer_bit = 16
+    # elif args.quan_mode == "best":
+    #     extra_layer_bit = -1
+    # else:
+    #     extra_layer_bit = 32
+    
     batch_size = 32
     input_shape = (batch_size, 3, 224, 224)
     engine = ModelSpeedupTensorRT(model, input_shape, config=calibration_config, batchsize=batch_size)
+    # engine = ModelSpeedupTensorRT(model, input_shape, config=calibration_config, batchsize=batch_size,extra_layer_bit=extra_layer_bit)
     for name, weight in model.named_parameters():
         print(name, weight.max().item(), weight.min().item())
 
@@ -255,7 +283,6 @@ def main(quantizer_name=None):
     final_loss, final_acc = run_test_trt(engine)
     print('Final After Quantization:\nLoss: {}\nAccuracy: {}'.format(final_loss, final_acc))
     log.write('Final After Quantization:\nLoss: {}\nAccuracy: {}'.format(final_loss, final_acc))
-    
     count_flops(model, log)
             
     log.close()
@@ -274,5 +301,6 @@ if __name__ == '__main__':
 
     torch.set_num_threads(16)
     
-    main()
+    args = parse_args()
+    main(args)
     
