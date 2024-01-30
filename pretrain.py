@@ -43,7 +43,8 @@ def run_pretrain(args):
     model_type = 'mobilenet_v2_torchhub'   
     pretrained = True                      # load imagenet weight
     experiment_dir = 'pretrained_{}'.format(model_type) if args.experiment_dir is None else args.experiment_dir
-    os.mkdir(experiment_dir)
+    if not os.path.exists(experiment_dir):
+        os.mkdir(experiment_dir)
     checkpoint = None
     input_size = 224
     n_classes = 120
@@ -107,7 +108,7 @@ def parse_args():
     # finetuning parameters
     parser.add_argument('--n_workers', type=int, default=16,
                         help='number of threads')
-    parser.add_argument('--n_epochs', type=int, default=180,
+    parser.add_argument('--n_epochs', type=int, default=20,
                         help='number of epochs to train the model')
     parser.add_argument('--learning_rate', type=float, default=1e-4)
     parser.add_argument('--weight_decay', type=float, default=0.0)
