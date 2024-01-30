@@ -224,7 +224,7 @@ def parse_args():
                          help='checkpoint of the pretrained model')
     
     # pruner
-    parser.add_argument('--pruning_mode', type=str, default='conv1andconv2',
+    parser.add_argument('--pruning_mode', type=str, default='conv1',
                         choices=['conv0', 'conv1', 'conv2', 'conv1andconv2', 'all'])
     parser.add_argument('--sparsity', type=float, default=0.2,
                         help='target sparsity')
